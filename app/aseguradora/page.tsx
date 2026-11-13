@@ -1,17 +1,17 @@
 'use client';
 
 import { useSimulationStore } from '@/store/simulation-store';
+import { useShallow } from 'zustand/react/shallow';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { PayoutHistogramChart } from '@/components/simulation-charts';
 import { formatCurrency, formatNumber, formatPct } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  BarChart3,
-  TrendingUp,
-  AlertTriangle,
   ShieldAlert,
   Coins,
   Scale,
-  Building2,
   Users,
   CheckCircle2,
   ArrowRight
@@ -19,7 +19,11 @@ import {
 import Link from 'next/link';
 
 export default function AseguradoraV3() {
-  const { input, result, setInput } = useSimulationStore();
+  const { input, result, setInput } = useSimulationStore(useShallow((state) => ({
+    input: state.input,
+    result: state.result,
+    setInput: state.setInput,
+  })));
 
   const policies = input.portfolio?.policies ?? 1000;
   const fixedCost = input.portfolio?.fixedCost ?? 60000;
@@ -121,24 +125,24 @@ export default function AseguradoraV3() {
             <CardContent className="space-y-5">
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Número de pólizas vendidas</span>
+                  <Label id="policies-label" className="font-medium text-slate-700">Número de pólizas vendidas</Label>
                   <span className="font-bold text-indigo-700">{formatNumber(policies)}</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={100}
                   max={5000}
                   step={50}
                   value={policies}
-                  onChange={(e) =>
+                  aria-labelledby="policies-label"
+                  onValueChange={(value) =>
                     setInput({
                       portfolio: {
                         ...(input.portfolio ?? { fixedCost, variableCost: variableCostPerPolicy, adoption: 0 }),
-                        policies: Number(e.target.value)
+                        policies: Array.isArray(value) ? value[0] : value
                       }
                     })
                   }
-                  className="w-full accent-indigo-600"
+                  className="w-full [&_[data-slot=slider-range]]:bg-indigo-600 [&_[data-slot=slider-thumb]]:border-indigo-600"
                 />
                 <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
                   <span>100</span>
@@ -148,48 +152,48 @@ export default function AseguradoraV3() {
 
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Costos fijos anuales (F)</span>
+                  <Label id="fixed-cost-label" className="font-medium text-slate-700">Costos fijos anuales (F)</Label>
                   <span className="font-bold text-slate-900">{formatCurrency(fixedCost)}</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={20000}
                   max={120000}
                   step={5000}
                   value={fixedCost}
-                  onChange={(e) =>
+                  aria-labelledby="fixed-cost-label"
+                  onValueChange={(value) =>
                     setInput({
                       portfolio: {
                         ...(input.portfolio ?? { policies, variableCost: variableCostPerPolicy, adoption: 0 }),
-                        fixedCost: Number(e.target.value)
+                        fixedCost: Array.isArray(value) ? value[0] : value
                       }
                     })
                   }
-                  className="w-full accent-indigo-600"
+                  className="w-full [&_[data-slot=slider-range]]:bg-indigo-600 [&_[data-slot=slider-thumb]]:border-indigo-600"
                 />
                 <p className="text-[11px] text-muted-foreground mt-0.5">Plataforma tecnológica, nube, equipo y trámites</p>
               </div>
 
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Costo variable por póliza (c_v)</span>
+                  <Label id="variable-cost-label" className="font-medium text-slate-700">Costo variable por póliza (c_v)</Label>
                   <span className="font-bold text-slate-900">{formatCurrency(variableCostPerPolicy)}</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={5}
                   max={50}
                   step={5}
                   value={variableCostPerPolicy}
-                  onChange={(e) =>
+                  aria-labelledby="variable-cost-label"
+                  onValueChange={(value) =>
                     setInput({
                       portfolio: {
                         ...(input.portfolio ?? { policies, fixedCost, adoption: 0 }),
-                        variableCost: Number(e.target.value)
+                        variableCost: Array.isArray(value) ? value[0] : value
                       }
                     })
                   }
-                  className="w-full accent-indigo-600"
+                  className="w-full [&_[data-slot=slider-range]]:bg-indigo-600 [&_[data-slot=slider-thumb]]:border-indigo-600"
                 />
                 <p className="text-[11px] text-muted-foreground mt-0.5">Comisiones de cobranza, SMS de alerta y pasarela</p>
               </div>
@@ -275,6 +279,16 @@ export default function AseguradoraV3() {
                   </li>
                 </ul>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 shadow-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold">Distribución de pagos y riesgo</CardTitle>
+              <CardDescription>Frecuencia de pólizas por nivel de indemnización en la cartera actual.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PayoutHistogramChart data={result.payoutHistogram} />
             </CardContent>
           </Card>
 

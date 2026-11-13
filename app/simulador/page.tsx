@@ -1,6 +1,11 @@
 'use client';
 
 import { useSimulationStore } from '@/store/simulation-store';
+import { useShallow } from 'zustand/react/shallow';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DailyRainChart } from '@/components/simulation-charts';
 import { formatCurrency, formatMm } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,10 +14,7 @@ import {
   CloudRain,
   Play,
   CheckCircle,
-  AlertOctagon,
   ArrowRight,
-  TrendingUp,
-  RotateCcw,
   Sliders
 } from 'lucide-react';
 import { useState } from 'react';
@@ -27,7 +29,12 @@ const scenarios = [
 ] as const;
 
 export default function SimuladorV2() {
-  const { input, result, setInput, setScenario } = useSimulationStore();
+  const { input, result, setInput, setScenario } = useSimulationStore(useShallow((state) => ({
+    input: state.input,
+    result: state.result,
+    setInput: state.setInput,
+    setScenario: state.setScenario,
+  })));
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(result.dailyRain.length - 1);
 
@@ -78,33 +85,33 @@ export default function SimuladorV2() {
 
       {/* Selector de Escenarios Segmentado */}
       <div className="mb-8">
-        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
+        <Label id="scenario-tabs-label" className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
           Selecciona un Escenario de Temporada (Dic - Abr)
-        </label>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {scenarios.map((sc) => {
-            const isSelected = input.scenario === sc.id;
-            return (
-              <button
+        </Label>
+        <Tabs
+          value={input.scenario}
+          aria-labelledby="scenario-tabs-label"
+          onValueChange={(value) => {
+            const selectedScenario = scenarios.find((scenario) => scenario.id === value);
+            if (selectedScenario) setScenario(selectedScenario.id);
+          }}
+        >
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-3 bg-transparent p-0 md:grid-cols-5">
+            {scenarios.map((sc) => (
+              <TabsTrigger
                 key={sc.id}
-                onClick={() => setScenario(sc.id)}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  isSelected
-                    ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500 shadow-xs'
-                    : 'bg-white hover:border-slate-300'
-                }`}
+                value={sc.id}
+                className="group h-auto min-h-16 flex-col items-stretch rounded-xl border bg-white p-3 text-left whitespace-normal text-foreground data-active:border-blue-600 data-active:bg-blue-50/80 data-active:ring-2 data-active:ring-blue-500 data-active:shadow-xs"
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-sm font-bold ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>
-                    {sc.name}
-                  </span>
-                  {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                  <span className="text-sm font-bold">{sc.name}</span>
+                  <span className="h-2 w-2 rounded-full bg-blue-600 opacity-0 group-data-active:opacity-100" />
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1">{sc.desc}</p>
-              </button>
-            );
-          })}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {/* Modo Personalizado: Slider de lluvia manual */}
         {input.scenario === 'custom' && (
@@ -114,14 +121,14 @@ export default function SimuladorV2() {
               Lluvia Personalizada:
             </div>
             <div className="flex-1 w-full flex items-center gap-4">
-              <input
-                type="range"
+              <Slider
                 min={0}
                 max={900}
                 step={10}
                 value={input.customRainMm ?? 450}
-                onChange={(e) => setInput({ customRainMm: Number(e.target.value) })}
-                className="w-full accent-blue-600"
+                aria-label="Lluvia personalizada"
+                onValueChange={(value) => setInput({ customRainMm: Array.isArray(value) ? value[0] : value })}
+                className="w-full [&_[data-slot=slider-range]]:bg-blue-600 [&_[data-slot=slider-thumb]]:border-blue-600"
               />
               <span className="font-bold text-lg text-blue-700 min-w-[70px]">
                 {formatMm(input.customRainMm ?? 450)}
@@ -221,6 +228,14 @@ export default function SimuladorV2() {
                 >
                   {currentCumMm >= input.strikeMm ? 'PAGO ACTIVADO' : 'SIN PAGO'}
                 </Badge>
+              </div>
+              <div className="mt-6 border-t pt-5">
+                <h3 className="mb-3 text-sm font-semibold text-slate-800">Precipitación acumulada por fecha</h3>
+                <DailyRainChart
+                  data={result.dailyRain}
+                  strikeMm={input.strikeMm}
+                  exitMm={input.exitMm}
+                />
               </div>
             </CardContent>
           </Card>

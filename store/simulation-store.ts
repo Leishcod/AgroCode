@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { SimulationInput, SimulationResult, DEFAULT_SIMULATION_INPUT } from '@/lib/api/contract';
-import { calculateMockSimulation } from '@/lib/engine/mock-engine';
+import { calculateMockSimulation } from '@/lib/engine';
 
 interface SimulationState {
   input: SimulationInput;
   result: SimulationResult;
+  performanceMs: number;
   isRecalculating: boolean;
   demoModeActive: boolean;
   demoStep: number;
@@ -18,9 +19,52 @@ interface SimulationState {
   reset: () => void;
 }
 
+type TimedSimulation = { result: SimulationResult; performanceMs: number };
+
+let cachedSimulationKey: string | undefined;
+let cachedSimulation: TimedSimulation | undefined;
+
+function getSimulationKey(input: SimulationInput): string {
+  return JSON.stringify({
+    hectares: input.hectares,
+    sumInsured: input.sumInsured,
+    strikeMm: input.strikeMm,
+    exitMm: input.exitMm,
+    adaptation: input.adaptation,
+    safetyLoading: input.safetyLoading,
+    expenseRatio: input.expenseRatio,
+    scenario: input.scenario,
+    customRainMm: input.scenario === 'custom' ? input.customRainMm : undefined,
+    portfolio: {
+      policies: input.portfolio?.policies ?? 1000,
+      fixedCost: input.portfolio?.fixedCost ?? 60000,
+      variableCost: input.portfolio?.variableCost ?? 20,
+    },
+  });
+}
+
+function calculateTimedSimulation(input: SimulationInput): TimedSimulation {
+  const key = getSimulationKey(input);
+  if (key === cachedSimulationKey && cachedSimulation) return cachedSimulation;
+
+  const startedAt = performance.now();
+  const result = calculateMockSimulation(input);
+  const performanceMs = performance.now() - startedAt;
+
+  cachedSimulationKey = key;
+  cachedSimulation = { result, performanceMs };
+  return cachedSimulation;
+}
+
+function inputsAreEqual(left: SimulationInput, right: SimulationInput): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+const initialSimulation = calculateTimedSimulation(DEFAULT_SIMULATION_INPUT);
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   input: DEFAULT_SIMULATION_INPUT,
-  result: calculateMockSimulation(DEFAULT_SIMULATION_INPUT),
+  ...initialSimulation,
   isRecalculating: false,
   demoModeActive: false,
   demoStep: 0,
@@ -34,8 +78,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       updated.exitMm = updated.strikeMm + 50;
     }
 
-    const result = calculateMockSimulation(updated);
-    set({ input: updated, result });
+    if (inputsAreEqual(current, updated)) return;
+
+    set({ input: updated, ...calculateTimedSimulation(updated) });
   },
 
   setScenario: (scenario) => {
@@ -63,7 +108,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   reset: () => {
     set({
       input: DEFAULT_SIMULATION_INPUT,
-      result: calculateMockSimulation(DEFAULT_SIMULATION_INPUT),
+      ...calculateTimedSimulation(DEFAULT_SIMULATION_INPUT),
       demoModeActive: false,
       demoStep: 0
     });

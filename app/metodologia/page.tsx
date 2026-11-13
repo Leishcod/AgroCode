@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, HelpCircle, Layers, Database, ShieldAlert, Cpu } from 'lucide-react';
+import { HelpCircle, Database, ShieldAlert, Cpu } from 'lucide-react';
 
 const glossary = [
   { term: 'Seguro Paramétrico', desc: 'Contrato donde la indemnización se activa automáticamente cuando un índice objetivo e independiente (ej. lluvia acumulada) cruza un umbral prefijado, sin requerir peritajes de campo ni evaluación de daños individuales.' },

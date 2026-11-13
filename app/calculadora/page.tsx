@@ -2,25 +2,34 @@
 
 import Link from 'next/link';
 import { useSimulationStore } from '@/store/simulation-store';
+import { useShallow } from 'zustand/react/shallow';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { PayoutCurveChart } from '@/components/simulation-charts';
 import { formatCurrency, formatMm, formatPct } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  CloudRain,
   ShieldCheck,
   Sprout,
   MapPin,
-  TrendingUp,
   AlertCircle,
   ArrowRight,
   Info,
-  Check,
   ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function CalculadoraV1() {
-  const { input, result, setInput, toggleAdaptation } = useSimulationStore();
+  const { input, result, setInput, toggleAdaptation } = useSimulationStore(useShallow((state) => ({
+    input: state.input,
+    result: state.result,
+    setInput: state.setInput,
+    toggleAdaptation: state.toggleAdaptation,
+  })));
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -60,46 +69,59 @@ export default function CalculadoraV1() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
+                <Label id="zone-label" className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
                   Zona / Distrito Piloto
-                </label>
-                <select
+                </Label>
+                <Select
                   value={input.zoneId}
-                  onChange={(e) => setInput({ zoneId: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  onValueChange={(value) => {
+                    if (value !== null) setInput({ zoneId: value });
+                  }}
                 >
-                  <option value="piura_medio">Piura - Valle Medio (Chulucanas / Tambogrande)</option>
-                  <option value="tumbes_zarumilla">Tumbes - Zarumilla</option>
-                  <option value="lambayeque_olmos">Lambayeque - Olmos / Motupe</option>
-                </select>
+                  <SelectTrigger aria-labelledby="zone-label">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="piura_medio">Piura - Valle Medio (Chulucanas / Tambogrande)</SelectItem>
+                    <SelectItem value="tumbes_zarumilla">Tumbes - Zarumilla</SelectItem>
+                    <SelectItem value="lambayeque_olmos">Lambayeque - Olmos / Motupe</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
+                  <Label id="crop-label" className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
                     Cultivo
-                  </label>
-                  <select
+                  </Label>
+                  <Select
                     value={input.cropId}
-                    onChange={(e) => setInput({ cropId: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    onValueChange={(value) => {
+                      if (value !== null) setInput({ cropId: value });
+                    }}
                   >
-                    <option value="mango">Mango Criollo/Kent</option>
-                    <option value="banano">Banano Orgánico</option>
-                    <option value="limon">Limón Sutil</option>
-                  </select>
+                    <SelectTrigger aria-labelledby="crop-label">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mango">Mango Criollo/Kent</SelectItem>
+                      <SelectItem value="banano">Banano Orgánico</SelectItem>
+                      <SelectItem value="limon">Limón Sutil</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
+                  <Label htmlFor="hectares" className="text-xs font-semibold text-slate-700 uppercase tracking-wide block mb-1">
                     Hectáreas (ha)
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="hectares"
                     type="number"
                     min={1}
                     max={50}
                     value={input.hectares}
                     onChange={(e) => setInput({ hectares: Math.max(1, Number(e.target.value)) })}
-                    className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="h-10"
                   />
                 </div>
               </div>
@@ -118,17 +140,17 @@ export default function CalculadoraV1() {
             <CardContent className="space-y-5">
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Suma asegurada (L)</span>
+                  <Label id="sum-insured-label" className="font-medium text-slate-700">Suma asegurada (L)</Label>
                   <span className="font-bold text-slate-900">{formatCurrency(input.sumInsured)} / ha</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={500}
                   max={5000}
                   step={100}
                   value={input.sumInsured}
-                  onChange={(e) => setInput({ sumInsured: Number(e.target.value) })}
-                  className="w-full accent-emerald-600"
+                  aria-labelledby="sum-insured-label"
+                  onValueChange={(value) => setInput({ sumInsured: Array.isArray(value) ? value[0] : value })}
+                  className="w-full [&_[data-slot=slider-range]]:bg-emerald-600 [&_[data-slot=slider-thumb]]:border-emerald-600"
                 />
                 <div className="flex justify-between text-[11px] text-muted-foreground mt-0.5">
                   <span>S/ 500</span>
@@ -138,17 +160,17 @@ export default function CalculadoraV1() {
 
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Umbral de activación K (Gatillo)</span>
+                  <Label id="strike-label" className="font-medium text-slate-700">Umbral de activación K (Gatillo)</Label>
                   <span className="font-bold text-emerald-700">{formatMm(input.strikeMm)}</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={300}
                   max={700}
                   step={10}
                   value={input.strikeMm}
-                  onChange={(e) => setInput({ strikeMm: Number(e.target.value) })}
-                  className="w-full accent-emerald-600"
+                  aria-labelledby="strike-label"
+                  onValueChange={(value) => setInput({ strikeMm: Array.isArray(value) ? value[0] : value })}
+                  className="w-full [&_[data-slot=slider-range]]:bg-emerald-600 [&_[data-slot=slider-thumb]]:border-emerald-600"
                 />
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   El seguro empieza a indemnizar a partir de {formatMm(input.strikeMm)} acumulados.
@@ -157,17 +179,17 @@ export default function CalculadoraV1() {
 
               <div>
                 <div className="flex justify-between items-center text-sm mb-1">
-                  <span className="font-medium text-slate-700">Límite de pago total S</span>
+                  <Label id="exit-label" className="font-medium text-slate-700">Límite de pago total S</Label>
                   <span className="font-bold text-slate-900">{formatMm(input.exitMm)}</span>
                 </div>
-                <input
-                  type="range"
+                <Slider
                   min={Math.max(400, input.strikeMm + 10)}
                   max={900}
                   step={10}
                   value={input.exitMm}
-                  onChange={(e) => setInput({ exitMm: Number(e.target.value) })}
-                  className="w-full accent-emerald-600"
+                  aria-labelledby="exit-label"
+                  onValueChange={(value) => setInput({ exitMm: Array.isArray(value) ? value[0] : value })}
+                  className="w-full [&_[data-slot=slider-range]]:bg-emerald-600 [&_[data-slot=slider-thumb]]:border-emerald-600"
                 />
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   A partir de {formatMm(input.exitMm)} se paga el 100% de la suma asegurada.
@@ -191,31 +213,29 @@ export default function CalculadoraV1() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-emerald-100 cursor-pointer hover:border-emerald-300 transition-colors">
-                <input
-                  type="checkbox"
+              <Label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-emerald-100 cursor-pointer hover:border-emerald-300 transition-colors">
+                <Checkbox
                   checked={input.adaptation.drainage}
-                  onChange={() => toggleAdaptation('drainage')}
-                  className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  onCheckedChange={() => toggleAdaptation('drainage')}
+                  className="mt-1 data-checked:border-emerald-600 data-checked:bg-emerald-600"
                 />
                 <div>
                   <span className="text-sm font-semibold text-slate-900 block">Drenaje parcelario habilitado</span>
                   <span className="text-xs text-muted-foreground">Canaletas y zanjas de evacuación de agua pluvial.</span>
                 </div>
-              </label>
+              </Label>
 
-              <label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-emerald-100 cursor-pointer hover:border-emerald-300 transition-colors">
-                <input
-                  type="checkbox"
+              <Label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-emerald-100 cursor-pointer hover:border-emerald-300 transition-colors">
+                <Checkbox
                   checked={input.adaptation.cover}
-                  onChange={() => toggleAdaptation('cover')}
-                  className="mt-1 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  onCheckedChange={() => toggleAdaptation('cover')}
+                  className="mt-1 data-checked:border-emerald-600 data-checked:bg-emerald-600"
                 />
                 <div>
                   <span className="text-sm font-semibold text-slate-900 block">Cobertura vegetal o acolchado</span>
                   <span className="text-xs text-muted-foreground">Protege contra la erosión y la sedimentación del suelo.</span>
                 </div>
-              </label>
+              </Label>
             </CardContent>
           </Card>
 
@@ -235,13 +255,13 @@ export default function CalculadoraV1() {
                     <span>Recargo de seguridad (λ)</span>
                     <span className="font-bold">{input.safetyLoading.toFixed(2)}</span>
                   </div>
-                  <input
-                    type="range"
+                  <Slider
                     min={0}
                     max={1}
                     step={0.05}
                     value={input.safetyLoading}
-                    onChange={(e) => setInput({ safetyLoading: Number(e.target.value) })}
+                    aria-label="Recargo de seguridad lambda"
+                    onValueChange={(value) => setInput({ safetyLoading: Array.isArray(value) ? value[0] : value })}
                     className="w-full"
                   />
                 </div>
@@ -293,6 +313,20 @@ export default function CalculadoraV1() {
               </div>
             </div>
           </div>
+
+          <Card className="border-slate-200 shadow-xs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-bold">Curva de indemnización</CardTitle>
+              <CardDescription>Pago paramétrico según la precipitación acumulada y los umbrales de la póliza.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PayoutCurveChart
+                data={result.payoutCurve}
+                strikeMm={input.strikeMm}
+                exitMm={input.exitMm}
+              />
+            </CardContent>
+          </Card>
 
           {/* Frase en lenguaje simple (Requisito del documento) */}
           <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">

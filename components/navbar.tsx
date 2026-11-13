@@ -3,8 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSimulationStore } from '@/store/simulation-store';
-import { CloudRain, PlayCircle, BarChart3, BookOpen, LayoutDashboard, Presentation, RotateCcw } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
+import { CloudRain, PlayCircle, BarChart3, BookOpen, LayoutDashboard, Presentation, RotateCcw, Copy, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { serializeSimulationInput } from '@/lib/url/serialize';
+import { useState } from 'react';
 
 const navItems = [
   { href: '/', label: 'V0: Inicio', icon: LayoutDashboard },
@@ -16,7 +19,26 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { demoModeActive, toggleDemoMode, reset } = useSimulationStore();
+  const { input, demoModeActive, toggleDemoMode, reset } = useSimulationStore(useShallow((state) => ({
+    input: state.input,
+    demoModeActive: state.demoModeActive,
+    toggleDemoMode: state.toggleDemoMode,
+    reset: state.reset,
+  })));
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const copySimulationLink = async () => {
+    const url = new URL(window.location.href);
+    url.search = serializeSimulationInput(input, url.searchParams).toString();
+
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setLinkCopied(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -61,6 +83,17 @@ export function Navbar() {
 
         {/* Acciones: Demo & Reset */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={copySimulationLink}
+            title="Copiar enlace de simulación"
+            aria-label="Copiar enlace de simulación"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {linkCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+            <span className="hidden xl:inline">{linkCopied ? 'Enlace copiado' : 'Copiar enlace'}</span>
+          </button>
+
           <button
             onClick={reset}
             title="Restablecer valores"
