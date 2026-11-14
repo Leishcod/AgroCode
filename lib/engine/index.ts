@@ -6,6 +6,7 @@ import { validateSimulationInput } from '@/lib/engine/validate';
 export { calculatePayoutModel } from '@/lib/engine/payout';
 export { calculatePremium } from '@/lib/engine/premium';
 export { validateSimulationInput } from '@/lib/engine/validate';
+export { PIURA_RAINFALL_CALIBRATION } from '@/lib/engine/calibration';
 
 export function calculateMockSimulation(input: SimulationInput): SimulationResult {
   const validatedInput = validateSimulationInput(input);

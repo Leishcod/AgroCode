@@ -1,6 +1,8 @@
 import type { SimulationInput } from '@/lib/api/contract';
+import { PIURA_RAINFALL_CALIBRATION, sampleCalibratedRainfall } from '@/lib/engine/calibration';
 
-const histogramWeights = [0.79, 0.085, 0.055, 0.035, 0.035] as const;
+const DISTRIBUTION_SAMPLE_SIZE = 5_000;
+const PAYOUT_HISTOGRAM_BUCKETS = 100;
 
 export type PayoutHistogramEntry = { bin: number; count: number };
 
@@ -29,25 +31,28 @@ export function calculatePayoutModel(input: SimulationInput): PayoutModel {
     payoutCurve.push({ rainMm, payout: Math.round(payoutAtRain(rainMm)) });
   }
 
-  const portfolioSize = input.portfolio?.policies ?? 1000;
-  const histogramFractions = [0, 0.25, 0.5, 0.75, 1];
-  const payoutHistogram = histogramFractions.map((fraction, index) => {
-    const targetPayout = maxPayout * fraction;
-    const closestCurvePoint = payoutCurve.reduce((closest, point) =>
-      Math.abs(point.payout - targetPayout) < Math.abs(closest.payout - targetPayout)
-        ? point
-        : closest,
-    payoutCurve[0]);
-
-    return {
-      bin: closestCurvePoint.payout,
-      count: index === histogramFractions.length - 1
-        ? 0
-        : Math.round(portfolioSize * histogramWeights[index]),
-    };
-  });
-  payoutHistogram[payoutHistogram.length - 1].count = portfolioSize
-    - payoutHistogram.slice(0, -1).reduce((sum, entry) => sum + entry.count, 0);
+  const portfolioSize = Math.max(1, Math.floor(input.portfolio?.policies ?? 1000));
+  const rainfallSample = sampleCalibratedRainfall(DISTRIBUTION_SAMPLE_SIZE);
+  const sampleHistogram = new Map<number, number>();
+  for (const sampleRain of rainfallSample) {
+    const samplePayout = payoutAtRain(sampleRain);
+    const bucket = samplePayout === 0
+      ? 0
+      : Math.min(
+          PAYOUT_HISTOGRAM_BUCKETS,
+          Math.ceil((samplePayout / maxPayout) * PAYOUT_HISTOGRAM_BUCKETS),
+        );
+    const bin = bucket === 0 ? 0 : (bucket / PAYOUT_HISTOGRAM_BUCKETS) * maxPayout;
+    sampleHistogram.set(bin, (sampleHistogram.get(bin) ?? 0) + 1);
+  }
+  const payoutHistogram = [...sampleHistogram.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([bin, count]) => ({
+      bin: Math.round(bin),
+      count: (count / rainfallSample.length) * portfolioSize,
+    }));
+  const lastEntry = payoutHistogram[payoutHistogram.length - 1];
+  lastEntry.count += portfolioSize - payoutHistogram.reduce((sum, entry) => sum + entry.count, 0);
 
   const dailyRain = [
     { date: '01 Dic', cumMm: Math.min(25, rain * 0.05) },
@@ -71,11 +76,11 @@ export function calculatePayoutModel(input: SimulationInput): PayoutModel {
 }
 
 function getScenarioRain(input: SimulationInput): number {
-  if (input.scenario === 'nino_debil') return 430;
-  if (input.scenario === 'nino_fuerte') return 550;
-  if (input.scenario === 'extraordinario') return 780;
+  if (input.scenario === 'nino_debil') return PIURA_RAINFALL_CALIBRATION.historicSeasons.nino2022_2023;
+  if (input.scenario === 'nino_fuerte') return PIURA_RAINFALL_CALIBRATION.historicSeasons.nino2016_2017;
+  if (input.scenario === 'extraordinario') return PIURA_RAINFALL_CALIBRATION.historicSeasons.nino1997_1998;
   if (input.scenario === 'custom' && input.customRainMm !== undefined) {
     return input.customRainMm;
   }
-  return 320;
+  return PIURA_RAINFALL_CALIBRATION.meanRainMm;
 }

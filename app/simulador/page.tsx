@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DailyRainChart } from '@/components/simulation-charts';
-import { formatCurrency, formatMm } from '@/lib/format';
+import { formatCurrency, formatMm, formatNumber } from '@/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 const scenarios = [
-  { id: 'normal', name: 'Normal', rainMm: 320, desc: 'Año típico sin anomalía térmica' },
-  { id: 'nino_debil', name: 'Niño Débil', rainMm: 430, desc: 'Lluvia moderada sobre el umbral' },
-  { id: 'nino_fuerte', name: 'Niño Fuerte', rainMm: 550, desc: 'Inundaciones y desbordes en Piura' },
-  { id: 'extraordinario', name: 'Extraordinario (2017)', rainMm: 780, desc: 'Evento catastrófico Niño Costero' },
+  { id: 'normal', name: 'Normal', rainMm: 89.47, desc: 'Media estacional CHIRPS de 45 temporadas' },
+  { id: 'nino_debil', name: 'Niño Débil', rainMm: 205.733543, desc: 'Temporada histórica 2022–2023' },
+  { id: 'nino_fuerte', name: 'Niño Fuerte', rainMm: 281.435181, desc: 'Temporada histórica 2016–2017' },
+  { id: 'extraordinario', name: 'Extraordinario (1997–98)', rainMm: 487.609364, desc: 'Temporada histórica CHIRPS' },
   { id: 'custom', name: 'Personalizado', rainMm: 500, desc: 'Ajuste manual del jurado' },
 ] as const;
 
@@ -40,6 +40,18 @@ export default function SimuladorV2() {
 
   const isTriggered = result.scenarioPayout > 0;
   const isFullPayout = result.scenarioPayout >= result.maxPayout;
+  const payoutForScenario = (rainMm: number) => input.sumInsured
+    * Math.max(0, Math.min(1, (rainMm - input.strikeMm) / (input.exitMm - input.strikeMm)));
+  const statusForScenario = (rainMm: number) => rainMm <= input.strikeMm
+    ? 'Sin activación'
+    : rainMm >= input.exitMm
+      ? 'Pago total'
+      : 'Pago parcial';
+  const statusClassForScenario = (rainMm: number) => rainMm <= input.strikeMm
+    ? 'text-slate-500'
+    : rainMm >= input.exitMm
+      ? 'text-rose-600 font-bold'
+      : 'text-emerald-600 font-semibold';
 
   const handlePlay = () => {
     setIsPlaying(true);
@@ -254,42 +266,42 @@ export default function SimuladorV2() {
                       <th className="py-2.5 px-3">Escenario</th>
                       <th className="py-2.5 px-3">Lluvia</th>
                       <th className="py-2.5 px-3">Pago / ha</th>
-                      <th className="py-2.5 px-3">Total Cartera (1,000 pólizas)</th>
+                      <th className="py-2.5 px-3">Total Cartera ({formatNumber(input.portfolio?.policies ?? 1000)} pólizas)</th>
                       <th className="py-2.5 px-3">Estado</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y text-slate-700">
                     <tr className={input.scenario === 'normal' ? 'bg-blue-50/60 font-semibold' : ''}>
                       <td className="py-2.5 px-3">Normal</td>
-                      <td className="py-2.5 px-3">320 mm</td>
-                      <td className="py-2.5 px-3">S/ 0.00</td>
-                      <td className="py-2.5 px-3">S/ 0</td>
-                      <td className="py-2.5 px-3 text-slate-500">Sin activación</td>
+                      <td className="py-2.5 px-3">{formatMm(scenarios[0].rainMm)}</td>
+                      <td className="py-2.5 px-3">{formatCurrency(payoutForScenario(scenarios[0].rainMm))}</td>
+                      <td className="py-2.5 px-3">{formatCurrency(payoutForScenario(scenarios[0].rainMm) * (input.portfolio?.policies ?? 1000))}</td>
+                      <td className={`py-2.5 px-3 ${statusClassForScenario(scenarios[0].rainMm)}`}>{statusForScenario(scenarios[0].rainMm)}</td>
                     </tr>
                     <tr className={input.scenario === 'nino_debil' ? 'bg-blue-50/60 font-semibold' : ''}>
                       <td className="py-2.5 px-3">Niño Débil</td>
-                      <td className="py-2.5 px-3">430 mm</td>
+                      <td className="py-2.5 px-3">{formatMm(scenarios[1].rainMm)}</td>
                       <td className="py-2.5 px-3">
-                        {formatCurrency(result.maxPayout * Math.max(0, (430 - input.strikeMm) / (input.exitMm - input.strikeMm)))}
+                        {formatCurrency(payoutForScenario(scenarios[1].rainMm))}
                       </td>
-                      <td className="py-2.5 px-3">S/ 300,000</td>
-                      <td className="py-2.5 px-3 text-emerald-600 font-semibold">Pago Parcial</td>
+                      <td className="py-2.5 px-3">{formatCurrency(payoutForScenario(scenarios[1].rainMm) * (input.portfolio?.policies ?? 1000))}</td>
+                      <td className={`py-2.5 px-3 ${statusClassForScenario(scenarios[1].rainMm)}`}>{statusForScenario(scenarios[1].rainMm)}</td>
                     </tr>
                     <tr className={input.scenario === 'nino_fuerte' ? 'bg-blue-50/60 font-semibold' : ''}>
                       <td className="py-2.5 px-3">Niño Fuerte</td>
-                      <td className="py-2.5 px-3">550 mm</td>
+                      <td className="py-2.5 px-3">{formatMm(scenarios[2].rainMm)}</td>
                       <td className="py-2.5 px-3">
-                        {formatCurrency(result.maxPayout * Math.max(0, Math.min(1, (550 - input.strikeMm) / (input.exitMm - input.strikeMm))))}
+                        {formatCurrency(payoutForScenario(scenarios[2].rainMm))}
                       </td>
-                      <td className="py-2.5 px-3">S/ 1,500,000</td>
-                      <td className="py-2.5 px-3 text-emerald-700 font-semibold">Pago Mayoritario</td>
+                      <td className="py-2.5 px-3">{formatCurrency(payoutForScenario(scenarios[2].rainMm) * (input.portfolio?.policies ?? 1000))}</td>
+                      <td className={`py-2.5 px-3 ${statusClassForScenario(scenarios[2].rainMm)}`}>{statusForScenario(scenarios[2].rainMm)}</td>
                     </tr>
                     <tr className={input.scenario === 'extraordinario' ? 'bg-blue-50/60 font-semibold' : ''}>
-                      <td className="py-2.5 px-3">Extraordinario 2017</td>
-                      <td className="py-2.5 px-3">780 mm</td>
-                      <td className="py-2.5 px-3">{formatCurrency(result.maxPayout)}</td>
-                      <td className="py-2.5 px-3 text-rose-700 font-bold">S/ 2,000,000</td>
-                      <td className="py-2.5 px-3 text-rose-600 font-bold">Pago Total 100%</td>
+                      <td className="py-2.5 px-3">{scenarios[3].name}</td>
+                      <td className="py-2.5 px-3">{formatMm(scenarios[3].rainMm)}</td>
+                      <td className="py-2.5 px-3">{formatCurrency(payoutForScenario(scenarios[3].rainMm))}</td>
+                      <td className="py-2.5 px-3 text-rose-700 font-bold">{formatCurrency(payoutForScenario(scenarios[3].rainMm) * (input.portfolio?.policies ?? 1000))}</td>
+                      <td className={`py-2.5 px-3 ${statusClassForScenario(scenarios[3].rainMm)}`}>{statusForScenario(scenarios[3].rainMm)}</td>
                     </tr>
                   </tbody>
                 </table>

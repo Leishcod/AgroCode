@@ -20,8 +20,7 @@ export function calculatePremium(
   payoutHistogram: PayoutHistogramEntry[],
 ): PremiumCalculation {
   const statistics = calculatePayoutStatistics(payoutHistogram);
-  const portfolioSize = Math.max(1, input.portfolio?.policies ?? 1000);
-  const safetyAmount = input.safetyLoading * statistics.standardDeviation / Math.sqrt(portfolioSize);
+  const safetyAmount = input.safetyLoading * statistics.standardDeviation;
   const technicalPremium = statistics.expectedPayout + safetyAmount;
   const grossPremium = technicalPremium / (1 - input.expenseRatio);
   const adaptationPct = getAdaptationDiscount(input);

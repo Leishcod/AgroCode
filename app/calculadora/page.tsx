@@ -183,7 +183,7 @@ export default function CalculadoraV1() {
                   <span className="font-bold text-slate-900">{formatMm(input.exitMm)}</span>
                 </div>
                 <Slider
-                  min={Math.max(400, input.strikeMm + 10)}
+                  min={input.strikeMm + 10}
                   max={900}
                   step={10}
                   value={input.exitMm}
